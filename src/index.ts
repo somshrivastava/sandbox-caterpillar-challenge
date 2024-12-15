@@ -38,7 +38,7 @@ function getDifference(group: Group) {
   );
 }
 
-async function fetchData(url: string): Promise<void> {
+async function run(url: string): Promise<void> {
   try {
     let data = await (await fetch(url)).json();
     let pl = data["pickupLocations"] as Number[][]; // pickup locations
@@ -46,24 +46,24 @@ async function fetchData(url: string): Promise<void> {
     let requests = data["requests"] as Request[];
     requests = requests.filter((request) => request.accepted);
 
-    let response: Group[] = [];
+    let solution: Group[] = [];
     for (let request of requests) {
       const isDriverId = (group) => group.driverId == request.driver;
       const dpc = getCoordinate(request.driver, pl); // driver pickup coordinate
       const ddc = getCoordinate(request.driver, dl); // driver dropoff coordinate
       const rpc = getCoordinate(request.rider, pl); // rider pickup coordinate
       const rdc = getCoordinate(request.rider, dl); // rider dropoff coordinate
-      if (response.length == 0 || response.find(isDriverId) == undefined) {
+      if (solution.length == 0 || solution.find(isDriverId) == undefined) {
         const newGroup = {
           driverId: request.driver,
           riderIds: [request.rider],
           averagePickup: { x: rpc.x + dpc.x, y: rpc.y + dpc.y },
           averageDropoff: { x: rdc.x + ddc.x, y: rdc.y + ddc.y },
         } as Group;
-        response.push(newGroup);
+        solution.push(newGroup);
       } else {
-        const index = response.findIndex(isDriverId);
-        const group = response[index];
+        const index = solution.findIndex(isDriverId);
+        let group = solution[index];
         group.riderIds.push(request.rider);
         group.averagePickup = {
           x: group.averagePickup.x + rpc.x,
@@ -76,21 +76,21 @@ async function fetchData(url: string): Promise<void> {
       }
     }
 
-    response.map((group) => {
+    solution.map((group) => {
       const len = group.riderIds.length + 1;
       group.averageDropoff.x = Math.floor(group.averageDropoff.x / len);
       group.averageDropoff.y = Math.floor(group.averageDropoff.y / len);
       group.averagePickup.x = Math.floor(group.averagePickup.x / len);
       group.averagePickup.y = Math.floor(group.averagePickup.y / len);
     });
-    response.sort((a, b) => {
+    solution.sort((a, b) => {
       return getDifference(a) - getDifference(b);
     });
 
     fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(response),
+      body: JSON.stringify(solution),
     })
       .then((response) => response.text())
       .then((data) => {
@@ -101,4 +101,4 @@ async function fetchData(url: string): Promise<void> {
   }
 }
 
-fetchData(url);
+run(url);
