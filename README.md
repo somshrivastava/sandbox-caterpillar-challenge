@@ -1,1 +1,0 @@
-# sandbox-caterpillar-challenge
